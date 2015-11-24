@@ -1,6 +1,6 @@
 CC = gfortran
 TESTS_FOLDER = tests/
-TEST = bspline_action
+TEST = bspline_oo_test
 TEST_SRC = $(TEST).f90
 EXE = $(TEST)
 MODS_SRC = bspline_sub_module.f90 bspline_oo_module.f90 bspline_module.f90 bspline.f90

@@ -1,3 +1,9 @@
+!------------------------------------------------------------------------------
+! Description: bspline wrapper for easy usage of bspline module
+! Author: Junhao Li <streaver91@gmail.com>
+! License: BSD
+! -----------------------------------------------------------------------------
+
 module bspline
 
   use bspline_module
@@ -46,13 +52,16 @@ module bspline
     inbvy = 1
     iloy = 1
     call db2ink(x, nx, y, ny, fn_val, kx, ky, tx, ty, bcoe, iflag)
-    ! bspline_init = iflag
+    !seq = seq + 1
+    !bspline_init = seq
   end subroutine bspline_init
   
   ! x, y: coordinate of point to evaluate spline interpolated value
+  !! id_in: identifier returned by bspline_init
   function bspline_eval(x, y)
     implicit none
     real(wp) :: x, y, bspline_eval
+    ! integer :: id_in
     call db2val(x, y, idx, idy, tx, ty, nx, ny, kx, ky, bcoe, val, iflag, inbvx, inbvy, iloy)
     bspline_eval = val
   end function bspline_eval

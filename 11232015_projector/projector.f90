@@ -56,7 +56,7 @@ program projector_calc
     allocate(x_in(grid_in))
     allocate(y_in(grid_in))
     allocate(u_in(grid_in, grid_in))
-
+    
     do i = 1, LINE_SKIP
       read (1, *)
     end do
@@ -75,7 +75,7 @@ program projector_calc
     end do
     
     file_Z = get_filename(2, 2)
-
+    
     write (*, '("Reading Data From: ", A)') trim(file_Z)
 
   end subroutine read_potential
