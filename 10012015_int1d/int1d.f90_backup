@@ -1,0 +1,95 @@
+module calcU
+  double precision r1, r2
+  double precision r12
+  double precision gama, y, s
+  contains
+    function getU(x)
+      ! x is lambda
+      double precision getU, x
+      double precision tmp
+      tmp = y + 2 * s * x
+      getU = erf(0.5 * tmp * (x * (1 - x))**(-0.5)) / tmp * gama
+    end function getU
+    
+    subroutine init(r1, r2, beta)
+      double precision r1, r2, beta
+      double precision r12, eief, mu, hbar
+      r12 = r2 - r1
+      eief = 1
+      mu = 1
+      hbar = 1
+      gama = eief * (2 * beta * mu)**0.5 / hbar
+      y = (r1 + r2 - r12) * (2 * hbar**2 * beta / mu)**(-0.5)
+      s = r12 * (2 * hbar**2 * beta / mu)**(-0.5)
+    end subroutine
+end module calcU
+
+program main
+  use calcU
+  double precision integrate, f, a, b, eps
+  integer maxLoop
+  external integrate
+  external f
+  a = 0.0
+  b = 1.0
+  eps = 1.0e-6
+  maxLoop = int(1e5)
+  call init(dble(1.0), dble(1.0), dble(1.0))
+  print *, integrate(getU, a, b, eps, maxLoop)
+end program main
+
+function f(x)
+  implicit none
+  double precision f, x
+  f =  x * x
+end function f
+
+function integrate(f, a, b, eps, maxLoop)
+  ! Integrate f from a to b using rk45
+  implicit none
+  double precision integrate, f, a, b, EPS_DEFAULT
+  double precision h, x, w, w1, w2, k1, k2, k3, k4, k5, k6, r, delta
+  integer MAX_LOOP_DEFAULT, cnt
+  double precision eps
+  integer maxLoop
+  
+  w = 0.0 ! initial sum
+  h = 1.0e-3 ! initial step size
+  x = a ! integrate start from a
+  
+  cnt = 0
+  do while (cnt < maxLoop)
+    if (x >= b) then
+      exit
+    end if
+    h = min(h, b - x)
+    k1 = h * f(x)
+    k2 = h * f(x + h * 0.25)
+    k3 = h * f(x + h * 0.375)
+    k4 = h * f(x + h * 12 / 13)
+    k5 = h * f(x + h)
+    k6 = h * f(x + h * 0.5)
+    w1 = w + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4104 - k5 / 5;
+    w2 = w + 16 * k1 / 135 + 6656 * k3 / 12825 + 28561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
+    r = abs(w1 - w2) / h
+
+    ! my change to rk45 to avoid underflow r == 0
+    if (r <= eps) then
+      r = 1.d-60
+    end if
+
+    delta = 0.84 * (eps / r)**0.25
+    if (r <= eps) then
+      x = x + h
+      w = w1
+      cnt = cnt + 1
+    end if
+    h = delta * h
+    print *, "Step", cnt, x, w1, w2, delta, r, h
+    ! print *, h, k1, k2, k3, k4, k5, k6, w1, w2, r, delta, h, w
+  end do
+
+  integrate = w
+end function integrate
+
+
