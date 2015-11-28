@@ -11,6 +11,10 @@ else
 	F90FLAGS = -finit-local-zero -O0 -ffree-line-length-none -x f95-cpp-input -Wall
 endif
 
+BSPLINE = bspline/bspline_sub_module.mod bspline/bspline_oo_module.mod bspline/bspline_module.mod
+MATINV = matinv.o
+LIBS = $(BSPLINE) $(MATINV)
+
 # QUENCH  = -L$(HOME)/SimulatedAnnealing/quench_anneal/lib -lquench -lquench_seq
 # LINPACK = -L$(HOME)/lib2/linpack -llinpack
 # BLAS = -L$(HOME)/lib2/blas -lblas
@@ -27,15 +31,18 @@ endif
 .f90.o:
 	$(FC) $(F90FLAGS) -o $@ -c $<
 
+%.mod: %.f90
+	$(FC) $(CFLAGS) -c $< -o $@
+
 OBJS = projector.o
 
 all: $(EXE)
 #all: fixed_node fixed_node2
 
-$(EXE): $(OBJS)
-	$(FC) $(FFLAGS) $(LDFLAGS) $(OBJS) -o $@
+$(EXE): $(LIBS) $(OBJS)
+	$(FC) $(FFLAGS) $(LDFLAGS) $(LIBS) $(OBJS) -o $@
 
 clean:
 	rm -f *.mod *.o $(EXE)
-
+	rm -f bspline/*.mod
 
