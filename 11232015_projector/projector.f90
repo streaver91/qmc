@@ -122,7 +122,7 @@ program projector_calc
     
     evaluate_proj_sub = g_eZ_det * exp(E_T - u_ee)
     
-    write (*, *) evaluate_proj_sub, g_eZ_det, u_ee
+    ! write (*, *) evaluate_proj_sub, g_eZ_det, u_ee
     
     
   end function evaluate_proj_sub
