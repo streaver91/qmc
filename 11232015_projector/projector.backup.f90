@@ -9,6 +9,10 @@ program projector_calc
   integer, parameter :: TITLE_MAX_LENGTH = 32
   integer, parameter :: FILENAME_MAX_LENGTH = 64
   integer, parameter :: BUF_LENGTH = 64
+  real(wp), parameter :: E_T = 0.0_wp
+  real(wp), parameter :: grid_z = 0.0_wp
+  
+  ! Global variables
   character(TITLE_MAX_LENGTH) :: title
   integer :: num_type ! number of types of nucleis
   integer :: tot_nuclei
@@ -20,6 +24,7 @@ program projector_calc
   real(wp), allocatable :: pos_elec_final(:, :) ! final position of electrons
   integer :: num_grid
   real(wp) :: grid_xmin, grid_xmax, grid_ymin, grid_ymax
+  real(wp) :: grid_dx, grid_dy
   real(wp), allocatable :: proj(:, :)
   real(wp) :: tau
   character(BUF_LENGTH) :: tau_str
@@ -28,34 +33,133 @@ program projector_calc
   
   call read_input()
   call load_potential()
-  call evaluate_grid()
+  call evaluate_proj()
+  call output_proj()
 
   contains
+
+  subroutine output_proj()
+    ! Output calcualted proj to {title}.proj
+
+    implicit none
+
+    character(FILENAME_MAX_LENGTH) :: filename
+    integer :: i, j
+    real(wp) :: tx, ty
+
+    write(filename, '(A, ".proj")') trim(title)
+    
+    open(2, file = trim(filename))
+
+    write (2, '(3A20)') "x", "y", "proj"
+    
+    do i = 1, num_grid
+      tx = grid_dx * (i - 1) + grid_xmin
+      do j = 1, num_grid
+        ty = grid_dy * (j - 1) + grid_ymin
+        write (2, '(3F20.10)') tx, ty, proj(i, j)
+      end do
+    end do
+
+    close(2)
+
+    write (*, '("Results Saved To: ", A)') trim(filename)
+
+  end subroutine output_proj
   
-  subroutine evaluate_grid()
+  subroutine evaluate_proj()
+    ! Calculate position corresponding to each grid point
+    ! Change the position of last electron to position calculated
+    ! Call evalutate_proj_sub to evaluate proj
+    ! Save the result to proj
 
     implicit none
 
     integer :: i, j
-    real(wp) :: dx, dy, tx, ty
+    real(wp) :: tx, ty
     integer :: elec_id
     
+    write (*, '("Evaluate Projector...")')
+
     elec_id = num_elec
 
     allocate(proj(num_grid, num_grid))
 
-    dx = (grid_xmax - grid_xmin) / num_grid
-    dy = (grid_ymax - grid_ymin) / num_grid
+    grid_dx = (grid_xmax - grid_xmin) / num_grid
+    grid_dy = (grid_ymax - grid_ymin) / num_grid
 
     do i = 1, num_grid
-      tx = grid_xmin + dx * (i - 1)
+      tx = grid_xmin + grid_dx * (i - 1)
       do j = 1, num_grid
-        ty = grid_ymin + dy * (j - 1)
-        pos_elec_final(num_elec, 1: 3) = (/tx, ty, 0.0_wp/)
+        ty = grid_ymin + grid_dy * (j - 1)
+        pos_elec_final(num_elec, 1: 3) = (/tx, ty, grid_z/)
+        proj(i, j) = evaluate_proj_sub()
       end do
     end do
 
-  end subroutine evaluate_grid
+  end subroutine evaluate_proj
+    
+  function evaluate_proj_sub()
+    ! Evaluate proj corresponding to the current configuration of particles
+
+    implicit none
+    
+    real(wp) :: evaluate_proj_sub
+    real(wp) :: u_ee
+    real(wp), allocatable :: g_eZ(:, :)
+    real(wp) :: g_eZ_det
+    integer :: i, j
+    
+    allocate(g_eZ(num_elec, num_elec))
+    do i = 1, num_elec
+      do j = 1, num_elec
+        g_eZ = get_g_eZ(i, j)
+      end do
+    end do
+    call matinv(g_eZ, num_elec, g_eZ_det)
+
+    u_ee = get_u_ee()
+    
+    evaluate_proj_sub = g_eZ_det * exp(E_T - u_ee)
+
+  end function evaluate_proj_sub
+  
+  function get_g_eZ(elec_to, elec_from)
+    
+    implicit none
+    
+    integer :: elec_to, elec_from
+    real(wp) :: get_g_eZ
+    
+    get_g_eZ = 0.0_wp
+    
+  end function get_g_eZ
+  
+  function get_u_ee()
+    
+    implicit none
+
+    real(wp) :: get_u_ee
+    integer :: i, j
+    real(wp) :: q, s
+    real(wp) :: t
+    real(wp) :: r_ij(3), r_ij_prime(3)
+    integer :: iflag
+    
+    get_u_ee = 0.0_wp
+
+    do i = 1, num_elec
+      do j = i + 1, num_elec
+        r_ij = pos_elec_init(j, 1:3) - pos_elec_init(i, 1:3)
+        r_ij_prime = pos_elec_final(j, 1:3) - pos_elec_final(j, 1:3)
+        q = (norm2(r_ij) + norm2(r_ij_prime)) / 2
+        s = norm2(r_ij - r_ij_prime)
+        call pot_ee%evaluate(q, s, 0, 0, t, iflag)
+        get_u_ee = get_u_ee + t
+      end do
+    end do
+    
+  end function get_u_ee
 
   subroutine load_potential()
 
@@ -63,7 +167,8 @@ program projector_calc
     
     character(FILENAME_MAX_LENGTH) :: file_e, file_Z
     integer :: i
-
+    
+    write (*, '("==== Start Loading Potential ====")')
     file_e = get_filename(2, -1)
     call load_potential_sub(file_e, pot_ee)
     
@@ -72,6 +177,8 @@ program projector_calc
       file_Z = get_filename(2, 2)
       call load_potential_sub(file_Z, pot_eZ(i))
     end do
+
+    write (*, '("==== Finished Loading Potential ====")')
     
   end subroutine load_potential
   

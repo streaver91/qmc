@@ -57,7 +57,7 @@ program projector_calc
       tx = grid_dx * (i - 1) + grid_xmin
       do j = 1, num_grid
         ty = grid_dy * (j - 1) + grid_ymin
-        write (2, '(3F20.10)') tx, ty, proj(i, j)
+        write (2, '(3ES20.10)') tx, ty, proj(i, j)
       end do
     end do
 
@@ -113,7 +113,7 @@ program projector_calc
     allocate(g_eZ(num_elec, num_elec))
     do i = 1, num_elec
       do j = 1, num_elec
-        g_eZ = get_g_eZ(i, j)
+        g_eZ(i, j) = get_g_eZ(i, j)
       end do
     end do
     call matinv(g_eZ, num_elec, g_eZ_det)
@@ -121,7 +121,10 @@ program projector_calc
     u_ee = get_u_ee()
     
     evaluate_proj_sub = g_eZ_det * exp(E_T - u_ee)
-
+    
+    write (*, *) evaluate_proj_sub, g_eZ_det, u_ee
+    
+    
   end function evaluate_proj_sub
   
   function get_g_eZ(elec_to, elec_from)
@@ -130,13 +133,38 @@ program projector_calc
     
     integer :: elec_to, elec_from
     real(wp) :: get_g_eZ
+    integer :: i, type_id, type_cnt
+    real(wp) :: q, s, t
+    real(wp) :: r_jp_a(3), r_i_a(3)
+    integer :: iflag
+
+    get_g_eZ = 1.0_wp
     
-    get_g_eZ = 0.0_wp
+    type_id = 1
+    type_cnt = 0
+    
+    do i = 1, tot_nuclei
+      r_jp_a = pos_elec_final(elec_to, 1:3) - pos_nuclei(i, 1:3)
+      r_i_a = pos_elec_init(elec_from, 1:3) - pos_nuclei(i, 1:3)
+      q = (norm2(r_jp_a) + norm2(r_i_a)) / 2
+      s = norm2(r_jp_a - r_i_a)
+      call pot_eZ(type_id)%evaluate(q, s, 0, 0, t, iflag)
+      get_g_eZ = get_g_eZ * t
+
+      type_cnt = type_cnt + 1
+
+      if (type_cnt == num_nuclei(type_id)) then
+        type_id = type_id + 1
+        type_cnt = 0
+      end if
+    end do
     
   end function get_g_eZ
   
   function get_u_ee()
-    
+    ! Evaluate u_ee according to:
+    ! Umrigar 2015. "Observation on variational and projector Monte Carlo Method", Eq. 18.
+
     implicit none
 
     real(wp) :: get_u_ee
@@ -151,7 +179,7 @@ program projector_calc
     do i = 1, num_elec
       do j = i + 1, num_elec
         r_ij = pos_elec_init(j, 1:3) - pos_elec_init(i, 1:3)
-        r_ij_prime = pos_elec_final(j, 1:3) - pos_elec_final(j, 1:3)
+        r_ij_prime = pos_elec_final(j, 1:3) - pos_elec_final(i, 1:3)
         q = (norm2(r_ij) + norm2(r_ij_prime)) / 2
         s = norm2(r_ij - r_ij_prime)
         call pot_ee%evaluate(q, s, 0, 0, t, iflag)
@@ -169,12 +197,12 @@ program projector_calc
     integer :: i
     
     write (*, '("==== Start Loading Potential ====")')
-    file_e = get_filename(2, -1)
+    file_e = get_filename(z_nuclei(1), -1)
     call load_potential_sub(file_e, pot_ee)
     
     allocate(pot_eZ(num_type))
     do i = 1, num_type
-      file_Z = get_filename(2, 2)
+      file_Z = get_filename(z_nuclei(i), z_nuclei(i))
       call load_potential_sub(file_Z, pot_eZ(i))
     end do
 

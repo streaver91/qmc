@@ -59,24 +59,24 @@
 !       enddo
         if(adiag.eq.0.d0) then
           write(6,'(''in matinv, n='',i5)') n
-          call systemflush(6)
+          ! call systemflush(6)
           write(6,'(''adiag=0 in matinv, slater matrix is singular., &
-          dimension='',i5,/, &
-          ''Possible fix: change renormaliz. rnorm in read_orb_pw.f &
-          if doing periodic system.'',/, &
-          ''Another possible reason if this occurs during orbital &
-          optimization is that orbitals are linearly dep.'',/, &
-          ''which happens if norb=nbasis and cusps are imposed on the &
-          s orbitals.'',/, & 
-          ''Yet another possible reason is failure to do a &
-          "make clean" between "make" and "make mpi" or vice &
-          versa.'',/, & 
-          ''The dimension gives you a clue as to where matinv was &
-          called from.'')') nsub
+          &dimension='',i5,/, &
+          &''Possible fix: change renormaliz. rnorm in read_orb_pw.f &
+          &if doing periodic system.'',/, &
+          &''Another possible reason if this occurs during orbital &
+          &optimization is that orbitals are linearly dep.'',/, &
+          &''which happens if norb=nbasis and cusps are imposed on the &
+          &s orbitals.'',/, & 
+          &''Yet another possible reason is failure to do a &
+          &"make clean" between "make" and "make mpi" or vice &
+          &versa.'',/, & 
+          &''The dimension gives you a clue as to where matinv was &
+          & called from.'')') nsub
           do irow=0,(n-1)
               write(6,'(100es9.1)') (a(irow*n+k),k=1,n)
           enddo
-          call systemflush(6)
+          ! call systemflush(6)
           stop 'adiag=0 in matinv'
         endif
         adiagi=one/adiag
